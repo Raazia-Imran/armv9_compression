@@ -1,0 +1,169 @@
+// ARMv9 Huffman Compression - Single File Version for OneCompiler
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <sys/time.h>
+
+// Huffman Tree Node
+typedef struct HuffmanNode {
+    unsigned char data;
+    unsigned frequency;
+    struct HuffmanNode *left, *right;
+} HuffmanNode;
+
+// Compression Result
+typedef struct {
+    size_t original_size;
+    size_t compressed_size;
+    double ratio;
+    double time;
+} CompressResult;
+
+// Simplified frequency counting (SVE2 concept)
+void armv9_frequency_count(const unsigned char* data, size_t len, unsigned* freq) {
+    // Simulate SVE2 parallel processing
+    for (size_t i = 0; i < len; i += 8) {  // Process 8 bytes at a time (concept)
+        for (int j = 0; j < 8 && (i + j) < len; j++) {
+            freq[data[i + j]]++;
+        }
+    }
+}
+
+// Create Huffman node
+HuffmanNode* create_node(unsigned char data, unsigned freq) {
+    HuffmanNode* node = malloc(sizeof(HuffmanNode));
+    node->data = data;
+    node->frequency = freq;
+    node->left = node->right = NULL;
+    return node;
+}
+
+// Build Huffman tree with ARMv9 optimizations
+HuffmanNode* build_huffman_tree(unsigned char* data, size_t size) {
+    unsigned frequencies[256] = {0};
+    
+    // Use ARMv9-inspired parallel frequency counting
+    armv9_frequency_count(data, size, frequencies);
+    
+    // Build simple tree (simplified for demo)
+    HuffmanNode* nodes[256];
+    int count = 0;
+    
+    for (int i = 0; i < 256; i++) {
+        if (frequencies[i] > 0) {
+            nodes[count++] = create_node(i, frequencies[i]);
+        }
+    }
+    
+    // Build tree (simplified)
+    while (count > 1) {
+        // Find two minimum nodes (simplified)
+        int min1 = 0, min2 = 1;
+        for (int i = 2; i < count; i++) {
+            if (nodes[i]->frequency < nodes[min1]->frequency) {
+                min2 = min1;
+                min1 = i;
+            } else if (nodes[i]->frequency < nodes[min2]->frequency) {
+                min2 = i;
+            }
+        }
+        
+        // Merge nodes
+        HuffmanNode* merged = create_node(0, nodes[min1]->frequency + nodes[min2]->frequency);
+        merged->left = nodes[min1];
+        merged->right = nodes[min2];
+        
+        // Update node list
+        nodes[min1] = merged;
+        nodes[min2] = nodes[--count];
+    }
+    
+    return nodes[0];
+}
+
+// Generate codes
+void generate_codes(HuffmanNode* root, char** codes, char* buf, int depth) {
+    if (!root) return;
+    
+    if (!root->left && !root->right) {
+        buf[depth] = '\0';
+        codes[root->data] = strdup(buf);
+        return;
+    }
+    
+    buf[depth] = '0';
+    generate_codes(root->left, codes, buf, depth + 1);
+    buf[depth] = '1';
+    generate_codes(root->right, codes, buf, depth + 1);
+}
+
+// Get current time
+double get_time() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + tv.tv_usec * 1e-6;
+}
+
+// Main compression function
+CompressResult compress_data(const char* input, size_t length) {
+    double start = get_time();
+    CompressResult result = {0};
+    
+    unsigned char* data = (unsigned char*)input;
+    
+    // Build Huffman tree
+    HuffmanNode* root = build_huffman_tree(data, length);
+    
+    // Generate codes
+    char* codes[256] = {0};
+    char buffer[256];
+    generate_codes(root, codes, buffer, 0);
+    
+    // Calculate compressed size
+    size_t bit_count = 0;
+    for (size_t i = 0; i < length; i++) {
+        if (codes[data[i]]) {
+            bit_count += strlen(codes[data[i]]);
+        }
+    }
+    
+    result.original_size = length;
+    result.compressed_size = (bit_count + 7) / 8; // Convert to bytes
+    result.ratio = (1.0 - (double)result.compressed_size / length) * 100.0;
+    result.time = get_time() - start;
+    
+    // Cleanup
+    for (int i = 0; i < 256; i++) {
+        if (codes[i]) free(codes[i]);
+    }
+    
+    return result;
+}
+
+int main() {
+    printf("=== ARMv9 Huffman Compression ===\n\n");
+    
+    // Test with different data patterns
+    const char* test_strings[] = {
+        "ARMv9 architecture provides advanced vector processing capabilities through SVE2.",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // High redundancy
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", // Low redundancy
+        NULL
+    };
+    
+    for (int i = 0; test_strings[i]; i++) {
+        printf("Test %d:\n", i + 1);
+        printf("Input: %.50s...\n", test_strings[i]);
+        
+        CompressResult result = compress_data(test_strings[i], strlen(test_strings[i]));
+        
+        printf("Original Size: %zu bytes\n", result.original_size);
+        printf("Compressed Size: %zu bytes\n", result.compressed_size);
+        printf("Compression Ratio: %.2f%%\n", result.ratio);
+        printf("Processing Time: %.6f seconds\n\n", result.time);
+    }
+    
+    printf("=== Complete ===\n");
+    return 0;
+}
