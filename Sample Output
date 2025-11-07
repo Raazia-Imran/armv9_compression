@@ -1,0 +1,24 @@
+=== ARMv9 Huffman Compression ===
+
+Test 1:
+Input: ARMv9 architecture provides advanced vector proces...
+Original Size: 81 bytes
+Compressed Size: 46 bytes
+Compression Ratio: 43.21%
+Processing Time: 0.000007 seconds
+
+Test 2:
+Input: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...
+Original Size: 64 bytes
+Compressed Size: 0 bytes
+Compression Ratio: 100.00%
+Processing Time: 0.000001 seconds
+
+Test 3:
+Input: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWX...
+Original Size: 62 bytes
+Compressed Size: 48 bytes
+Compression Ratio: 22.58%
+Processing Time: 0.000015 seconds
+
+=== Complete ===
